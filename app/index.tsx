@@ -1,9 +1,12 @@
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions, Pressable, Modal, Alert } from 'react-native';
+import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
+const VERSION = '1.0.0';
 
 const MODULES = [
   { id: 'words', icon: 'Aa', title: 'Слова', subtitle: '10 000 слов', border: '#ffffff' },
@@ -16,6 +19,31 @@ const MODULES = [
 ];
 
 export default function HomeScreen() {
+  const [devMenuVisible, setDevMenuVisible] = useState(false);
+
+  const resetProgress = () => {
+    Alert.alert(
+      'Сбросить прогресс?',
+      'Все данные будут удалены. Это действие нельзя отменить.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Сбросить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.multiRemove(['user_progress', 'settings', 'streak', 'last_study_date']);
+              setDevMenuVisible(false);
+              Alert.alert('Готово', 'Прогресс сброшен');
+            } catch (e) {
+              Alert.alert('Ошибка', String(e));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -41,6 +69,24 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <Pressable style={styles.versionBtn} onPress={() => setDevMenuVisible(true)}>
+        <Text style={styles.versionText}>v{VERSION}</Text>
+      </Pressable>
+
+      <Modal visible={devMenuVisible} transparent animationType="fade" onRequestClose={() => setDevMenuVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setDevMenuVisible(false)}>
+          <View style={styles.devMenu}>
+            <Text style={styles.devMenuTitle}>Меню разработчика</Text>
+            <Pressable style={styles.devMenuItem} onPress={resetProgress}>
+              <Text style={styles.devMenuItemText}>Сбросить прогресс</Text>
+            </Pressable>
+            <Pressable style={styles.devMenuClose} onPress={() => setDevMenuVisible(false)}>
+              <Text style={styles.devMenuCloseText}>Закрыть</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -104,5 +150,68 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.25)',
     fontWeight: '300',
     letterSpacing: 1,
+  },
+  versionBtn: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  versionText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '300',
+    letterSpacing: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  devMenu: {
+    width: 280,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    padding: 20,
+  },
+  devMenuTitle: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  devMenuItem: {
+    padding: 16,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    marginBottom: 12,
+  },
+  devMenuItemText: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#ef4444',
+    textAlign: 'center',
+  },
+  devMenuClose: {
+    padding: 12,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  devMenuCloseText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
   },
 });
