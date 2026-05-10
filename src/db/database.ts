@@ -393,3 +393,12 @@ export async function getAvailableTags(): Promise<string[]> {
 
   return Array.from(tagsSet).sort();
 }
+
+// --- Custom Words ---
+export async function addCustomWord(word: Omit<Word, 'id'>): Promise<void> {
+  const words = await getAll<Word>(WORDS_KEY);
+  const newId = words.length > 0 ? Math.max(...words.map(w => w.id)) + 1 : 1;
+  const newWord: Word = { ...word, id: newId };
+  words.push(newWord);
+  await setAll(WORDS_KEY, words);
+}

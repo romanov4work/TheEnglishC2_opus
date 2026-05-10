@@ -116,6 +116,12 @@ export default function WordsMenu({
         <Text style={styles.startBtnText}>Начать тренировку</Text>
       </Pressable>
 
+      <Link href="/add-word" asChild>
+        <Pressable style={styles.addWordBtn}>
+          <Text style={styles.addWordBtnText}>+ Добавить своё слово</Text>
+        </Pressable>
+      </Link>
+
       <View style={styles.infoRow}>
         <Text style={styles.infoText}>Точность: {stats.retentionRate}%</Text>
         <Text style={styles.infoText}>Всего: {totalWords}</Text>
@@ -194,9 +200,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   startBtnText: { fontSize: 18, fontWeight: '400', color: '#fff', textAlign: 'center' },
+  addWordBtn: {
+    padding: 14,
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.3)',
+    marginBottom: 16,
+  },
+  addWordBtnText: { fontSize: 15, fontWeight: '400', color: '#3b82f6', textAlign: 'center' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   infoText: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   linksRow: { flexDirection: 'row', gap: 12 },
