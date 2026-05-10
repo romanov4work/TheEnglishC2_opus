@@ -377,13 +377,6 @@ export default function WordsPage() {
     }
   };
 
-  const handleBackspace = () => {
-    if (assembled.length === 0) return;
-    const lastLetter = assembled[assembled.length - 1];
-    setAssembled(assembled.slice(0, -1));
-    setLetters([...letters, lastLetter]);
-  };
-
   // === MENU ===
   if (phase === 'menu') {
     return (
