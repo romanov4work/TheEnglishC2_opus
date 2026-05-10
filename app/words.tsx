@@ -164,8 +164,7 @@ export default function WordsPage() {
     setSelectedChoice(choice);
     const correct = choice === current.word.translation;
     setChoiceResult(correct ? 'correct' : 'wrong');
-    const rating = correct ? 3 : 1;
-    setTimeout(() => handleRate(rating as 1 | 2 | 3 | 4), 800);
+    setShowAnswer(true); // Show rating buttons
   };
 
   const handleLetterPress = (letter: string, idx: number) => {
@@ -180,8 +179,7 @@ export default function WordsPage() {
     if (newAssembled.length === current.word.word.length) {
       const correct = newAssembled === current.word.word;
       setAssemblyResult(correct ? 'correct' : 'wrong');
-      const rating = correct ? 3 : 1;
-      setTimeout(() => handleRate(rating as 1 | 2 | 3 | 4), 800);
+      setTimeout(() => setShowAnswer(true), 800); // Show rating buttons after delay
     }
   };
 
@@ -197,8 +195,7 @@ export default function WordsPage() {
     if (!current) return;
     const correct = userInput.toLowerCase().trim() === current.word.translation.toLowerCase().trim();
     setInputResult(correct ? 'correct' : 'wrong');
-    const rating = correct ? 3 : 1;
-    setTimeout(() => handleRate(rating as 1 | 2 | 3 | 4), 800);
+    setTimeout(() => setShowAnswer(true), 800); // Show rating buttons after delay
   };
 
   // === MENU ===
@@ -319,13 +316,18 @@ export default function WordsPage() {
                     key={i}
                     style={[styles.choiceBtn, { backgroundColor: bg }]}
                     onPress={() => !choiceResult && handleChoice(choice)}
-                    disabled={!!choiceResult}
+                    disabled={!!choiceResult || showAnswer}
                   >
                     <Text style={styles.choiceText}>{choice}</Text>
                   </Pressable>
                 );
               })}
             </View>
+            {choiceResult && (
+              <Text style={[styles.resultText, choiceResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
+                {choiceResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word.translation}`}
+              </Text>
+            )}
           </View>
         )}
 
@@ -343,16 +345,25 @@ export default function WordsPage() {
                 {assembled || ' '}
               </Text>
             </View>
-            <View style={styles.lettersBox}>
-              {letters.map((letter, i) => (
-                <Pressable key={i} style={styles.letterBtn} onPress={() => handleLetterPress(letter, i)}>
-                  <Text style={styles.letterText}>{letter}</Text>
+            {!showAnswer && (
+              <>
+                <View style={styles.lettersBox}>
+                  {letters.map((letter, i) => (
+                    <Pressable key={i} style={styles.letterBtn} onPress={() => handleLetterPress(letter, i)}>
+                      <Text style={styles.letterText}>{letter}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable style={styles.backspaceBtn} onPress={handleBackspace}>
+                  <Text style={styles.backspaceText}>← стереть</Text>
                 </Pressable>
-              ))}
-            </View>
-            <Pressable style={styles.backspaceBtn} onPress={handleBackspace}>
-              <Text style={styles.backspaceText}>← стереть</Text>
-            </Pressable>
+              </>
+            )}
+            {assemblyResult && (
+              <Text style={[styles.resultText, assemblyResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
+                {assemblyResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word.word}`}
+              </Text>
+            )}
           </View>
         )}
 
@@ -372,22 +383,28 @@ export default function WordsPage() {
               placeholderTextColor="rgba(255,255,255,0.2)"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!showAnswer}
             />
-            <View style={styles.inputBtns}>
-              <Pressable
-                style={styles.inputSubmitBtn}
-                onPress={handleInputSubmit}
-                disabled={userInput.trim().length === 0}
-              >
-                <Text style={styles.inputSubmitText}>Проверить</Text>
-              </Pressable>
-            </View>
-            {inputResult === 'correct' && <Text style={styles.resultCorrect}>✓ Правильно!</Text>}
-            {inputResult === 'wrong' && <Text style={styles.resultWrong}>✗ Правильный ответ: {current.word.translation}</Text>}
+            {!showAnswer && (
+              <View style={styles.inputBtns}>
+                <Pressable
+                  style={styles.inputSubmitBtn}
+                  onPress={handleInputSubmit}
+                  disabled={userInput.trim().length === 0}
+                >
+                  <Text style={styles.inputSubmitText}>Проверить</Text>
+                </Pressable>
+              </View>
+            )}
+            {inputResult && (
+              <Text style={[styles.resultText, inputResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
+                {inputResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word.translation}`}
+              </Text>
+            )}
           </View>
         )}
 
-        {showAnswer && exerciseType === 'flashcard' && (
+        {showAnswer && (
           <View style={styles.rateArea}>
             <Text style={styles.rateTitle}>Как вспомнили?</Text>
             <View style={styles.rateButtons}>
@@ -532,6 +549,7 @@ const styles = StyleSheet.create({
   inputBtns: { width: '100%' },
   inputSubmitBtn: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, padding: 18, alignItems: 'center' },
   inputSubmitText: { fontSize: 16, fontWeight: '400', color: '#fff' },
+  resultText: { fontSize: 14, fontWeight: '300', marginTop: 16, textAlign: 'center' },
   resultCorrect: { fontSize: 16, color: '#10b981', fontWeight: '400', marginTop: 16 },
   resultWrong: { fontSize: 14, color: '#ef4444', fontWeight: '300', marginTop: 16, textAlign: 'center' },
 });
