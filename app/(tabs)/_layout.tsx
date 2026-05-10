@@ -1,16 +1,5 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
-
-function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
-  return (
-    <View style={styles.tabItem}>
-      <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>{icon}</Text>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>{label}</Text>
-    </View>
-  );
-}
+import { View, Text, StyleSheet } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -18,14 +7,14 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0e0e15',
+          backgroundColor: '#0a0a0a',
           borderTopWidth: 0,
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 10,
+          height: 70,
+          paddingBottom: 16,
+          paddingTop: 12,
         },
-        tabBarActiveTintColor: '#6366f1',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.3)',
+        tabBarActiveTintColor: '#ffffff',
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.2)',
         tabBarShowLabel: false,
       }}
     >
@@ -33,15 +22,10 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🏠" label="Главная" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="👤" label="Профиль" focused={focused} />
+            <View style={styles.tabItem}>
+              <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>■</Text>
+              <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>English</Text>
+            </View>
           ),
         }}
       />
@@ -53,22 +37,25 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 4,
+    paddingTop: 2,
   },
   tabIcon: {
-    fontSize: 22,
-    opacity: 0.5,
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.2)',
+    fontWeight: '300',
   },
   tabIconFocused: {
-    opacity: 1,
+    color: '#ffffff',
   },
   tabLabel: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.3)',
-    marginTop: 2,
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.2)',
+    marginTop: 4,
+    fontWeight: '400',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   tabLabelFocused: {
-    color: '#6366f1',
+    color: '#ffffff',
   },
 });

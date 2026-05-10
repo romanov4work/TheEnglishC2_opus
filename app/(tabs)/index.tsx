@@ -1,42 +1,19 @@
+import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Pressable, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48 - 12) / 2;
+const CARD_WIDTH = (width - 48) / 2;
 
 const MODULES = [
-  { id: 'words', icon: '📚', title: 'Слова', subtitle: '10 000 слов', color: '#6366f1', gradient: '#4f46e5', accent: '#818cf8' },
-  { id: 'grammar', icon: '📖', title: 'Грамматика', subtitle: 'C1 — C2', color: '#ec4899', gradient: '#db2777', accent: '#f472b6' },
-  { id: 'pronunciation', icon: '🎤', title: 'Произношение', subtitle: 'IPA фонетика', color: '#f59e0b', gradient: '#d97706', accent: '#fbbf24' },
-  { id: 'reading', icon: '📖', title: 'Читаем', subtitle: 'Тексты и статьи', color: '#10b981', gradient: '#059669', accent: '#34d399' },
-  { id: 'listening', icon: '🎧', title: 'Слушаем', subtitle: 'Аудирование', color: '#06b6d4', gradient: '#0891b2', accent: '#22d3ee' },
-  { id: 'writing', icon: '✍️', title: 'Пишем', subtitle: 'Эссе и письма', color: '#8b5cf6', gradient: '#7c3aed', accent: '#a78bfa' },
-  { id: 'speaking', icon: '💬', title: 'Говорим', subtitle: 'Speaking', color: '#ef4444', gradient: '#dc2626', accent: '#f87171' },
+  { id: 'words', icon: 'Aa', title: 'Слова', subtitle: '10 000 слов', border: '#ffffff' },
+  { id: 'grammar', icon: '§', title: 'Грамматика', subtitle: 'C1 — C2', border: '#ffffff' },
+  { id: 'pronunciation', icon: '◉', title: 'Произношение', subtitle: 'IPA фонетика', border: '#ffffff' },
+  { id: 'reading', icon: '◎', title: 'Читаем', subtitle: 'Тексты и статьи', border: '#ffffff' },
+  { id: 'listening', icon: '◈', title: 'Слушаем', subtitle: 'Аудирование', border: '#ffffff' },
+  { id: 'writing', icon: '◇', title: 'Пишем', subtitle: 'Эссе и письма', border: '#ffffff' },
+  { id: 'speaking', icon: '◐', title: 'Говорим', subtitle: 'Speaking', border: '#ffffff' },
 ];
-
-function ModuleCard({ module }: { module: typeof MODULES[0] }) {
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-    >
-      <View style={[styles.cardInner, { backgroundColor: module.gradient }]}>
-        {/* Декоративные элементы */}
-        <View style={[styles.cardOrb1, { backgroundColor: module.accent }]} />
-        <View style={[styles.cardOrb2, { backgroundColor: module.accent }]} />
-
-        <View style={styles.cardContent}>
-          <Text style={styles.icon}>{module.icon}</Text>
-          <Text style={styles.title}>{module.title}</Text>
-          <Text style={styles.subtitle}>{module.subtitle}</Text>
-        </View>
-
-        <View style={styles.cardArrow}>
-          <Text style={styles.arrow}>›</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
 
 export default function HomeScreen() {
   return (
@@ -44,21 +21,23 @@ export default function HomeScreen() {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.logo}>English</Text>
-              <Text style={styles.headerSubtitle}>Твой путь к C1</Text>
-            </View>
-            <View style={styles.streakBadge}>
-              <Text style={styles.streakNum}>7</Text>
-              <Text style={styles.streakLabel}>дней</Text>
-            </View>
-          </View>
+          <Text style={styles.logo}>English</Text>
+          <Text style={styles.subtitle}>Твой путь к C1</Text>
         </View>
 
         <View style={styles.grid}>
           {MODULES.map((module) => (
-            <ModuleCard key={module.id} module={module} />
+            <Link key={module.id} href={`/${module.id}`} asChild style={styles.cardLink}>
+              <View style={styles.card}>
+                <View style={styles.cardTop}>
+                  <Text style={styles.icon}>{module.icon}</Text>
+                </View>
+                <View style={styles.cardBottom}>
+                  <Text style={styles.title}>{module.title}</Text>
+                  <Text style={styles.cardSubtitle}>{module.subtitle}</Text>
+                </View>
+              </View>
+            </Link>
           ))}
         </View>
       </ScrollView>
@@ -67,115 +46,63 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0a0a0f' },
+  root: { flex: 1, backgroundColor: '#0a0a0a' },
   scroll: { padding: 20, paddingTop: 60, paddingBottom: 100 },
-  header: { marginBottom: 28 },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
+  header: { marginBottom: 40 },
   logo: {
-    fontSize: 44,
-    fontWeight: '900',
+    fontSize: 52,
+    fontWeight: '200',
     color: '#fff',
-    letterSpacing: -1.5,
-    textShadowColor: 'rgba(99, 102, 241, 0.4)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 20,
+    letterSpacing: -2,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 2,
-    fontWeight: '400',
-    letterSpacing: 3,
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.25)',
+    marginTop: 6,
+    fontWeight: '300',
+    letterSpacing: 4,
     textTransform: 'uppercase',
-  },
-  streakBadge: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.3)',
-  },
-  streakNum: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#6366f1',
-  },
-  streakLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.4)',
-    fontWeight: '500',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  card: {
+  cardLink: {
     width: CARD_WIDTH,
     marginBottom: 12,
-    borderRadius: 20,
   },
-  cardPressed: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.85,
+  card: {
+    height: 160,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    padding: 20,
+    backgroundColor: 'transparent',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
   },
-  cardInner: {
-    height: 148,
-    borderRadius: 20,
-    padding: 16,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardOrb1: {
-    position: 'absolute',
-    top: -30,
-    right: -30,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    opacity: 0.15,
-  },
-  cardOrb2: {
-    position: 'absolute',
-    bottom: -20,
-    left: -10,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    opacity: 0.1,
-  },
-  cardContent: {
-    flex: 1,
-  },
+  cardTop: {},
   icon: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 28,
+    color: 'rgba(255,255,255,0.3)',
+    fontWeight: '200',
+  },
+  cardBottom: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   title: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 18,
     fontWeight: '400',
+    color: '#fff',
+    marginBottom: 4,
+    letterSpacing: 0.5,
   },
-  cardArrow: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-  },
-  arrow: {
-    fontSize: 24,
-    color: 'rgba(255,255,255,0.5)',
+  cardSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.25)',
     fontWeight: '300',
+    letterSpacing: 1,
   },
 });
