@@ -121,11 +121,18 @@ export default function WordsMenu({
         <Text style={styles.infoText}>Всего: {totalWords}</Text>
       </View>
 
-      <Link href="/settings" asChild>
-        <Pressable style={styles.settingsLink}>
-          <Text style={styles.settingsLinkText}>⚙ Настройки</Text>
-        </Pressable>
-      </Link>
+      <View style={styles.linksRow}>
+        <Link href="/stats" asChild>
+          <Pressable style={styles.link}>
+            <Text style={styles.linkText}>📊 Статистика</Text>
+          </Pressable>
+        </Link>
+        <Link href="/settings" asChild>
+          <Pressable style={styles.link}>
+            <Text style={styles.linkText}>⚙ Настройки</Text>
+          </Pressable>
+        </Link>
+      </View>
     </View>
   );
 }
@@ -192,6 +199,14 @@ const styles = StyleSheet.create({
   startBtnText: { fontSize: 18, fontWeight: '400', color: '#fff', textAlign: 'center' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   infoText: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
-  settingsLink: { padding: 12 },
-  settingsLinkText: { fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
+  linksRow: { flexDirection: 'row', gap: 12 },
+  link: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  linkText: { fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
 });
