@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import { Stats } from '../../src/types/words';
+import Filters from './Filters';
 
 interface WordsMenuProps {
   loading: boolean;
@@ -9,6 +10,12 @@ interface WordsMenuProps {
   longestStreak: number;
   studyHistory: string[];
   totalWords: number;
+  selectedLevel: string | null;
+  selectedTag: string | null;
+  availableLevels: string[];
+  availableTags: string[];
+  onLevelSelect: (level: string | null) => void;
+  onTagSelect: (tag: string | null) => void;
   onStart: () => void;
 }
 
@@ -19,6 +26,12 @@ export default function WordsMenu({
   longestStreak,
   studyHistory,
   totalWords,
+  selectedLevel,
+  selectedTag,
+  availableLevels,
+  availableTags,
+  onLevelSelect,
+  onTagSelect,
   onStart,
 }: WordsMenuProps) {
   if (loading) {
@@ -31,6 +44,15 @@ export default function WordsMenu({
 
   return (
     <View style={styles.container}>
+      <Filters
+        selectedLevel={selectedLevel}
+        selectedTag={selectedTag}
+        availableLevels={availableLevels}
+        availableTags={availableTags}
+        onLevelSelect={onLevelSelect}
+        onTagSelect={onTagSelect}
+      />
+
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Сегодня</Text>
         <View style={styles.statsRow}>

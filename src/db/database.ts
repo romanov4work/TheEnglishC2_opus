@@ -93,17 +93,33 @@ export async function seedWords(wordsToAdd: Omit<Word, 'id'>[]): Promise<void> {
   await setAll(WORDS_KEY, newWords);
 }
 
-export async function getDueCards(): Promise<{ word: Word; progress: UserProgress | null }[]> {
+export async function getDueCards(levelFilter?: string | null, tagFilter?: string | null): Promise<{ word: Word; progress: UserProgress | null }[]> {
   const words = await getAll<Word>(WORDS_KEY);
   const progressList = await getAll<UserProgress>(PROGRESS_KEY);
   const settings = await getSettings();
   const now = Date.now();
 
+  // Apply filters
+  let filteredWords = words;
+  if (levelFilter) {
+    filteredWords = filteredWords.filter(w => w.level === levelFilter);
+  }
+  if (tagFilter) {
+    filteredWords = filteredWords.filter(w => {
+      try {
+        const tags = JSON.parse(w.tags);
+        return tags.includes(tagFilter);
+      } catch {
+        return false;
+      }
+    });
+  }
+
   const result: { word: Word; progress: UserProgress | null }[] = [];
   let newCount = 0;
   let reviewCount = 0;
 
-  for (const word of words) {
+  for (const word of filteredWords) {
     const prog = progressList.find(p => p.wordId === word.id);
 
     if (!prog) {
@@ -353,4 +369,27 @@ export async function getLongestStreak(): Promise<number> {
   }
 
   return longest;
+}
+
+// --- Filters ---
+export async function getAvailableLevels(): Promise<string[]> {
+  const words = await getAll<Word>(WORDS_KEY);
+  const levels = new Set(words.map(w => w.level));
+  return Array.from(levels).sort();
+}
+
+export async function getAvailableTags(): Promise<string[]> {
+  const words = await getAll<Word>(WORDS_KEY);
+  const tagsSet = new Set<string>();
+
+  words.forEach(w => {
+    try {
+      const tags = JSON.parse(w.tags);
+      tags.forEach((tag: string) => tagsSet.add(tag));
+    } catch {
+      // ignore invalid JSON
+    }
+  });
+
+  return Array.from(tagsSet).sort();
 }

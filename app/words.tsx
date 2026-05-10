@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, Pressable, Alert } from 'react-native';
-import { getDueCards, seedWords, rateCard, getStats, getStreak, getLongestStreak, getStudyHistory, Word, UserProgress } from '../src/db/database';
+import { getDueCards, seedWords, rateCard, getStats, getStreak, getLongestStreak, getStudyHistory, getAvailableLevels, getAvailableTags, Word, UserProgress } from '../src/db/database';
 import { SEED_WORDS } from '../src/data/seedWords';
 import { Phase, ExerciseType, ChoiceResult, CardState, LearningSession as LearningSessionType, Stats } from '../src/types/words';
 import { getChoices, getLetters, getExerciseTypeByIndex } from '../src/utils/helpers';
@@ -19,6 +19,10 @@ export default function WordsPage() {
   const [streak, setStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [studyHistory, setStudyHistory] = useState<string[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [availableLevels, setAvailableLevels] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   const [learningSession, setLearningSession] = useState<LearningSessionType | null>(null);
   const [exerciseType, setExerciseType] = useState<ExerciseType>('flashcard');
@@ -36,7 +40,7 @@ export default function WordsPage() {
   const loadCards = useCallback(async () => {
     try {
       await seedWords(SEED_WORDS);
-      const due = await getDueCards();
+      const due = await getDueCards(selectedLevel, selectedTag);
       setCards(due);
       const s = await getStats(SEED_WORDS.length);
       setStats(s);
@@ -46,12 +50,16 @@ export default function WordsPage() {
       setLongestStreak(longest);
       const history = await getStudyHistory();
       setStudyHistory(history);
+      const levels = await getAvailableLevels();
+      setAvailableLevels(levels);
+      const tags = await getAvailableTags();
+      setAvailableTags(tags);
       setLoading(false);
     } catch (e) {
       Alert.alert('Error', String(e));
       setLoading(false);
     }
-  }, []);
+  }, [selectedLevel, selectedTag]);
 
   useEffect(() => { loadCards(); }, [loadCards]);
 
@@ -274,6 +282,12 @@ export default function WordsPage() {
           longestStreak={longestStreak}
           studyHistory={studyHistory}
           totalWords={SEED_WORDS.length}
+          selectedLevel={selectedLevel}
+          selectedTag={selectedTag}
+          availableLevels={availableLevels}
+          availableTags={availableTags}
+          onLevelSelect={setSelectedLevel}
+          onTagSelect={setSelectedTag}
           onStart={startSorting}
         />
       </View>
