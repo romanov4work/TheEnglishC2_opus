@@ -5,6 +5,7 @@ const PROGRESS_KEY = 'user_progress';
 const SETTINGS_KEY = 'settings';
 const STREAK_KEY = 'streak';
 const LAST_STUDY_KEY = 'last_study_date';
+const STUDY_HISTORY_KEY = 'study_history';
 
 export interface Word {
   id: number;
@@ -313,4 +314,43 @@ export async function updateStreak(): Promise<void> {
   }
 
   await AsyncStorage.setItem(LAST_STUDY_KEY, today);
+  await addStudyDate(today);
+}
+
+// --- Study History ---
+export async function getStudyHistory(): Promise<string[]> {
+  const data = await AsyncStorage.getItem(STUDY_HISTORY_KEY);
+  return data ? JSON.parse(data) : [];
+}
+
+export async function addStudyDate(date: string): Promise<void> {
+  const history = await getStudyHistory();
+  if (!history.includes(date)) {
+    history.push(date);
+    await AsyncStorage.setItem(STUDY_HISTORY_KEY, JSON.stringify(history));
+  }
+}
+
+export async function getLongestStreak(): Promise<number> {
+  const history = await getStudyHistory();
+  if (history.length === 0) return 0;
+
+  const sorted = history.sort();
+  let longest = 1;
+  let current = 1;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1]);
+    const curr = new Date(sorted[i]);
+    const diffDays = Math.floor((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000));
+
+    if (diffDays === 1) {
+      current++;
+      longest = Math.max(longest, current);
+    } else {
+      current = 1;
+    }
+  }
+
+  return longest;
 }

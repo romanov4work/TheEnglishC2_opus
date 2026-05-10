@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Pressable, Alert, TextInput } from 'react-native';
-import { getDueCards, seedWords, rateCard, getStats, getStreak, parseExamples, Word, UserProgress } from '../src/db/database';
+import { StyleSheet, Text, View, Pressable, Alert, TextInput, ScrollView } from 'react-native';
+import { getDueCards, seedWords, rateCard, getStats, getStreak, getLongestStreak, getStudyHistory, parseExamples, Word, UserProgress } from '../src/db/database';
 import { SEED_WORDS } from '../src/data/seedWords';
 
 type Phase = 'menu' | 'sorting' | 'learning';
@@ -55,6 +55,8 @@ export default function WordsPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ new: 0, learning: 0, review: 0, dueToday: 0, retentionRate: 0 });
   const [streak, setStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
+  const [studyHistory, setStudyHistory] = useState<string[]>([]);
 
   // Learning session
   const [learningSession, setLearningSession] = useState<LearningSession | null>(null);
@@ -85,6 +87,10 @@ export default function WordsPage() {
       setStats(s);
       const str = await getStreak();
       setStreak(str);
+      const longest = await getLongestStreak();
+      setLongestStreak(longest);
+      const history = await getStudyHistory();
+      setStudyHistory(history);
       setLoading(false);
     } catch (e) {
       Alert.alert('Error', String(e));
@@ -357,6 +363,37 @@ export default function WordsPage() {
                 </View>
               )}
 
+              <View style={styles.calendarCard}>
+                <View style={styles.calendarHeader}>
+                  <Text style={styles.calendarTitle}>История занятий</Text>
+                  <Text style={styles.calendarSubtitle}>Рекорд: {longestStreak} {longestStreak === 1 ? 'день' : longestStreak < 5 ? 'дня' : 'дней'}</Text>
+                </View>
+                <View style={styles.calendarGrid}>
+                  {(() => {
+                    const days = [];
+                    const today = new Date();
+                    for (let i = 29; i >= 0; i--) {
+                      const date = new Date(today);
+                      date.setDate(date.getDate() - i);
+                      const dateStr = date.toDateString();
+                      const hasStudy = studyHistory.includes(dateStr);
+                      const isToday = i === 0;
+                      days.push(
+                        <View
+                          key={i}
+                          style={[
+                            styles.calendarDay,
+                            hasStudy && styles.calendarDayActive,
+                            isToday && styles.calendarDayToday,
+                          ]}
+                        />
+                      );
+                    }
+                    return days;
+                  })()}
+                </View>
+              </View>
+
               <Pressable style={styles.startBtn} onPress={startSorting}>
                 <Text style={styles.startBtnText}>Начать тренировку</Text>
               </Pressable>
@@ -621,6 +658,47 @@ const styles = StyleSheet.create({
   },
   streakIcon: { fontSize: 24, marginRight: 8 },
   streakText: { fontSize: 16, color: '#fff', fontWeight: '300' },
+
+  // Calendar
+  calendarCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 4,
+    padding: 16,
+    marginBottom: 20,
+  },
+  calendarHeader: {
+    marginBottom: 12,
+  },
+  calendarTitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  calendarSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '300',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  calendarDay: {
+    width: 20,
+    height: 20,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  calendarDayActive: {
+    backgroundColor: 'rgba(16,185,129,0.6)',
+  },
+  calendarDayToday: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
 
   // Start button
   startBtn: {
