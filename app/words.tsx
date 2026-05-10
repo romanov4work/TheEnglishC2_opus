@@ -242,7 +242,6 @@ export default function WordsPage() {
     setPhase('menu');
     loadCards();
   };
-  };
 
   const handleChoice = (choice: string) => {
     if (!learningSession) return;
