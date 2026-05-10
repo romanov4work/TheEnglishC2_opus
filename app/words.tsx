@@ -62,7 +62,6 @@ export default function WordsPage() {
 
   // Exercise state
   const [showAnswer, setShowAnswer] = useState(false);
-  const [showRatingButtons, setShowRatingButtons] = useState(false);
   const [choices, setChoices] = useState<string[]>([]);
   const [choiceResult, setChoiceResult] = useState<ChoiceResult>(null);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
@@ -175,7 +174,6 @@ export default function WordsPage() {
 
   const setupExercise = (word: Word, type: ExerciseType) => {
     setShowAnswer(false);
-    setShowRatingButtons(false);
     setChoiceResult(null);
     setSelectedChoice(null);
     setAssembled('');
@@ -283,7 +281,7 @@ export default function WordsPage() {
     setSelectedChoice(choice);
     const correct = choice === current.translation;
     setChoiceResult(correct ? 'correct' : 'wrong');
-    setTimeout(() => setShowRatingButtons(true), 800);
+    setTimeout(() => moveToNextExercise(), 1000);
   };
 
   const handleLetterPress = (letter: string, idx: number) => {
@@ -298,7 +296,7 @@ export default function WordsPage() {
     if (newAssembled.length === current.word.length) {
       const correct = newAssembled === current.word;
       setAssemblyResult(correct ? 'correct' : 'wrong');
-      setTimeout(() => setShowRatingButtons(true), 800);
+      setTimeout(() => moveToNextExercise(), 1000);
     }
   };
 
@@ -307,7 +305,7 @@ export default function WordsPage() {
     const current = learningSession.unknownWords[learningSession.currentWordIndex];
     const correct = userInput.toLowerCase().trim() === current.translation.toLowerCase().trim();
     setInputResult(correct ? 'correct' : 'wrong');
-    setTimeout(() => setShowRatingButtons(true), 800);
+    setTimeout(() => moveToNextExercise(), 1000);
   };
 
   const handleBackspace = () => {
@@ -315,66 +313,6 @@ export default function WordsPage() {
     const lastLetter = assembled[assembled.length - 1];
     setAssembled(assembled.slice(0, -1));
     setLetters([...letters, lastLetter]);
-  };
-
-  const getIntervalText = (ms: number): string => {
-    const minutes = Math.floor(ms / 60000);
-    const hours = Math.floor(ms / 3600000);
-    const days = Math.floor(ms / 86400000);
-
-    if (days > 0) return `${days}д`;
-    if (hours > 0) return `${hours}ч`;
-    if (minutes > 0) return `${minutes}м`;
-    return '<1м';
-  };
-
-  const handleRating = async (rating: 1 | 2 | 3 | 4) => {
-    if (!learningSession) return;
-    const current = learningSession.unknownWords[learningSession.currentWordIndex];
-    const cardState = cards.find(c => c.word.id === current.id);
-
-    // Rate the card
-    await rateCard(current.id, rating, cardState?.progress || null);
-
-    // Move to next
-    moveToNextExercise();
-  };
-
-  const getRatingIntervals = () => {
-    if (!learningSession) return { again: '10м', hard: '10м', good: '10м', easy: '4д' };
-
-    const current = learningSession.unknownWords[learningSession.currentWordIndex];
-    const cardState = cards.find(c => c.word.id === current.id);
-    const progress = cardState?.progress;
-
-    if (!progress || progress.learningStep === 0) {
-      // New card
-      return { again: '10м', hard: '10м', good: '10м', easy: '4д' };
-    }
-
-    const settings = {
-      learningIntervals: [10 * 60 * 1000, 24 * 60 * 60 * 1000, 4 * 24 * 60 * 60 * 1000, 10 * 24 * 60 * 60 * 1000],
-      graduatingInterval: 10 * 24 * 60 * 60 * 1000,
-      easyBonus: 1.3,
-    };
-
-    const step = progress.learningStep;
-
-    if (step < 4) {
-      return {
-        again: getIntervalText(settings.learningIntervals[0]),
-        hard: getIntervalText(progress.interval * 0.5),
-        good: getIntervalText(settings.learningIntervals[step]),
-        easy: getIntervalText(4 * 24 * 60 * 60 * 1000 * settings.easyBonus),
-      };
-    } else {
-      return {
-        again: getIntervalText(settings.learningIntervals[0]),
-        hard: getIntervalText(progress.interval * 0.5),
-        good: getIntervalText(settings.graduatingInterval),
-        easy: getIntervalText(settings.graduatingInterval * settings.easyBonus),
-      };
-    }
   };
 
   // === MENU ===
@@ -517,33 +455,9 @@ export default function WordsPage() {
                 {current.examples && parseExamples(current.examples).length > 0 && (
                   <Text style={styles.exampleText}>"{parseExamples(current.examples)[0]}"</Text>
                 )}
-              </View>
-            )}
-            {showAnswer && (
-              <View style={styles.ratingButtons}>
-                {(() => {
-                  const intervals = getRatingIntervals();
-                  return (
-                    <>
-                      <Pressable style={[styles.ratingBtn, styles.ratingAgain]} onPress={() => handleRating(1)}>
-                        <Text style={styles.ratingBtnLabel}>Снова</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.again}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingHard]} onPress={() => handleRating(2)}>
-                        <Text style={styles.ratingBtnLabel}>Трудно</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.hard}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingGood]} onPress={() => handleRating(3)}>
-                        <Text style={styles.ratingBtnLabel}>Хорошо</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.good}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingEasy]} onPress={() => handleRating(4)}>
-                        <Text style={styles.ratingBtnLabel}>Легко</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.easy}</Text>
-                      </Pressable>
-                    </>
-                  );
-                })()}
+                <Pressable style={styles.continueBtn} onPress={moveToNextExercise}>
+                  <Text style={styles.continueBtnText}>Продолжить</Text>
+                </Pressable>
               </View>
             )}
           </View>
@@ -579,33 +493,6 @@ export default function WordsPage() {
               <Text style={[styles.resultText, choiceResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
                 {choiceResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.translation}`}
               </Text>
-            )}
-            {showRatingButtons && (
-              <View style={styles.ratingButtons}>
-                {(() => {
-                  const intervals = getRatingIntervals();
-                  return (
-                    <>
-                      <Pressable style={[styles.ratingBtn, styles.ratingAgain]} onPress={() => handleRating(1)}>
-                        <Text style={styles.ratingBtnLabel}>Снова</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.again}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingHard]} onPress={() => handleRating(2)}>
-                        <Text style={styles.ratingBtnLabel}>Трудно</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.hard}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingGood]} onPress={() => handleRating(3)}>
-                        <Text style={styles.ratingBtnLabel}>Хорошо</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.good}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingEasy]} onPress={() => handleRating(4)}>
-                        <Text style={styles.ratingBtnLabel}>Легко</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.easy}</Text>
-                      </Pressable>
-                    </>
-                  );
-                })()}
-              </View>
             )}
           </View>
         )}
@@ -643,33 +530,6 @@ export default function WordsPage() {
                 {assemblyResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word}`}
               </Text>
             )}
-            {showRatingButtons && (
-              <View style={styles.ratingButtons}>
-                {(() => {
-                  const intervals = getRatingIntervals();
-                  return (
-                    <>
-                      <Pressable style={[styles.ratingBtn, styles.ratingAgain]} onPress={() => handleRating(1)}>
-                        <Text style={styles.ratingBtnLabel}>Снова</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.again}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingHard]} onPress={() => handleRating(2)}>
-                        <Text style={styles.ratingBtnLabel}>Трудно</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.hard}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingGood]} onPress={() => handleRating(3)}>
-                        <Text style={styles.ratingBtnLabel}>Хорошо</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.good}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingEasy]} onPress={() => handleRating(4)}>
-                        <Text style={styles.ratingBtnLabel}>Легко</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.easy}</Text>
-                      </Pressable>
-                    </>
-                  );
-                })()}
-              </View>
-            )}
           </View>
         )}
 
@@ -706,33 +566,6 @@ export default function WordsPage() {
               <Text style={[styles.resultText, inputResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
                 {inputResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.translation}`}
               </Text>
-            )}
-            {showRatingButtons && (
-              <View style={styles.ratingButtons}>
-                {(() => {
-                  const intervals = getRatingIntervals();
-                  return (
-                    <>
-                      <Pressable style={[styles.ratingBtn, styles.ratingAgain]} onPress={() => handleRating(1)}>
-                        <Text style={styles.ratingBtnLabel}>Снова</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.again}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingHard]} onPress={() => handleRating(2)}>
-                        <Text style={styles.ratingBtnLabel}>Трудно</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.hard}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingGood]} onPress={() => handleRating(3)}>
-                        <Text style={styles.ratingBtnLabel}>Хорошо</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.good}</Text>
-                      </Pressable>
-                      <Pressable style={[styles.ratingBtn, styles.ratingEasy]} onPress={() => handleRating(4)}>
-                        <Text style={styles.ratingBtnLabel}>Легко</Text>
-                        <Text style={styles.ratingBtnInterval}>{intervals.easy}</Text>
-                      </Pressable>
-                    </>
-                  );
-                })()}
-              </View>
             )}
           </View>
         )}
@@ -914,48 +747,4 @@ const styles = StyleSheet.create({
   resultText: { fontSize: 14, fontWeight: '300', marginTop: 16, textAlign: 'center' },
   resultCorrect: { fontSize: 16, color: '#10b981', fontWeight: '400', marginTop: 16 },
   resultWrong: { fontSize: 14, color: '#ef4444', fontWeight: '300', marginTop: 16, textAlign: 'center' },
-
-  // Rating buttons
-  ratingButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  ratingBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ratingAgain: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderColor: 'rgba(239,68,68,0.3)',
-  },
-  ratingHard: {
-    backgroundColor: 'rgba(251,191,36,0.1)',
-    borderColor: 'rgba(251,191,36,0.3)',
-  },
-  ratingGood: {
-    backgroundColor: 'rgba(16,185,129,0.1)',
-    borderColor: 'rgba(16,185,129,0.3)',
-  },
-  ratingEasy: {
-    backgroundColor: 'rgba(59,130,246,0.1)',
-    borderColor: 'rgba(59,130,246,0.3)',
-  },
-  ratingBtnLabel: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  ratingBtnInterval: {
-    fontSize: 11,
-    fontWeight: '300',
-    color: 'rgba(255,255,255,0.5)',
-  },
 });
