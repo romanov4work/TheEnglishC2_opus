@@ -115,15 +115,15 @@ export default function WordsPage() {
   };
 
   const startReviewSession = (reviewCards: CardState[]) => {
-    // For review, show ONE word at a time with appropriate exercise
-    const firstCard = reviewCards[0];
-    const step = firstCard.progress?.learningStep || 1;
+    // Take up to 10 words for review session
+    const wordsToReview = reviewCards.slice(0, 10).map(c => c.word);
 
-    // Map learningStep to exercise type: 1→flashcard, 2→choices, 3→assembly, 4→input
-    const exerciseIndex = Math.min(step, 3) as 0 | 1 | 2 | 3;
+    // Start with first word's exercise type based on its learningStep
+    const firstStep = reviewCards[0].progress?.learningStep || 1;
+    const exerciseIndex = Math.min(firstStep, 3) as 0 | 1 | 2 | 3;
 
     const session: LearningSession = {
-      unknownWords: [firstCard.word],
+      unknownWords: wordsToReview,
       currentExerciseType: exerciseIndex,
       currentWordIndex: 0,
     };
@@ -194,46 +194,78 @@ export default function WordsPage() {
 
     const { unknownWords, currentExerciseType, currentWordIndex } = learningSession;
 
-    // Move to next word in current exercise
-    if (currentWordIndex < unknownWords.length - 1) {
-      const newSession = {
-        ...learningSession,
-        currentWordIndex: currentWordIndex + 1,
-      };
-      setLearningSession(newSession);
-      setupExercise(unknownWords[currentWordIndex + 1], getExerciseTypeByIndex(currentExerciseType));
-    } else if (currentExerciseType < 3) {
-      // Move to next exercise type, reset word index
-      const newSession = {
-        ...learningSession,
-        currentExerciseType: (currentExerciseType + 1) as 0 | 1 | 2 | 3,
-        currentWordIndex: 0,
-      };
-      setLearningSession(newSession);
-      const newType = getExerciseTypeByIndex(newSession.currentExerciseType);
-      setExerciseType(newType);
-      setupExercise(unknownWords[0], newType);
+    // Check if this is a review session
+    const currentWord = unknownWords[currentWordIndex];
+    const cardState = cards.find(c => c.word.id === currentWord.id);
+    const isReviewSession = !!cardState?.progress;
+
+    if (isReviewSession) {
+      // Review: one exercise per word, then move to next word
+      if (currentWordIndex < unknownWords.length - 1) {
+        const nextWord = unknownWords[currentWordIndex + 1];
+        const nextCardState = cards.find(c => c.word.id === nextWord.id);
+        const nextStep = nextCardState?.progress?.learningStep || 1;
+        const nextExerciseIndex = Math.min(nextStep, 3) as 0 | 1 | 2 | 3;
+
+        const newSession = {
+          ...learningSession,
+          currentWordIndex: currentWordIndex + 1,
+          currentExerciseType: nextExerciseIndex,
+        };
+        setLearningSession(newSession);
+        setExerciseType(getExerciseTypeByIndex(nextExerciseIndex));
+        setupExercise(nextWord, getExerciseTypeByIndex(nextExerciseIndex));
+      } else {
+        // Finished all review words
+        finishLearningSession();
+      }
     } else {
-      // Finished all exercises
-      finishLearningSession();
+      // New words: 4 exercises per word
+      if (currentWordIndex < unknownWords.length - 1) {
+        const newSession = {
+          ...learningSession,
+          currentWordIndex: currentWordIndex + 1,
+        };
+        setLearningSession(newSession);
+        setupExercise(unknownWords[currentWordIndex + 1], getExerciseTypeByIndex(currentExerciseType));
+      } else if (currentExerciseType < 3) {
+        // Move to next exercise type, reset word index
+        const newSession = {
+          ...learningSession,
+          currentExerciseType: (currentExerciseType + 1) as 0 | 1 | 2 | 3,
+          currentWordIndex: 0,
+        };
+        setLearningSession(newSession);
+        const newType = getExerciseTypeByIndex(newSession.currentExerciseType);
+        setExerciseType(newType);
+        setupExercise(unknownWords[0], newType);
+      } else {
+        // Finished all exercises for new words
+        finishLearningSession();
+      }
     }
   };
 
   const finishLearningSession = async () => {
     if (!learningSession) return;
 
-    // Check if this is a review session (word has progress)
+    // Check if this is a review session
     const firstWord = learningSession.unknownWords[0];
     const cardState = cards.find(c => c.word.id === firstWord.id);
 
     if (cardState?.progress) {
-      // Review session - advance learningStep for this one word
-      await rateCard(firstWord.id, 3, cardState.progress);
-      Alert.alert('Отлично!', 'Слово повторено. Оно вернется позже.');
+      // Review session - advance learningStep for ALL words
+      for (const word of learningSession.unknownWords) {
+        const wordProgress = cards.find(c => c.word.id === word.id)?.progress;
+        if (wordProgress) {
+          await rateCard(word.id, 3, wordProgress);
+        }
+      }
+      Alert.alert('Отлично!', `Вы повторили ${learningSession.unknownWords.length} слов. Они вернутся позже.`);
     } else {
       // New words session - set all to learning step 1
       for (const word of learningSession.unknownWords) {
-        await rateCard(word.id, 3, null); // Sets to learning step 1
+        await rateCard(word.id, 3, null);
       }
       Alert.alert('Отлично!', `Вы изучили ${learningSession.unknownWords.length} слов. Они вернутся через 10 минут для повторения.`);
     }
