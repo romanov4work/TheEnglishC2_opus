@@ -115,10 +115,16 @@ export default function WordsPage() {
   };
 
   const startReviewSession = (reviewCards: CardState[]) => {
-    // Create learning session from review cards
+    // For review, show ONE word at a time with appropriate exercise
+    const firstCard = reviewCards[0];
+    const step = firstCard.progress?.learningStep || 1;
+
+    // Map learningStep to exercise type: 1→flashcard, 2→choices, 3→assembly, 4→input
+    const exerciseIndex = Math.min(step, 3) as 0 | 1 | 2 | 3;
+
     const session: LearningSession = {
-      unknownWords: reviewCards.map(c => c.word),
-      currentExerciseType: (reviewCards[0].progress?.learningStep || 1) as 0 | 1 | 2 | 3,
+      unknownWords: [firstCard.word],
+      currentExerciseType: exerciseIndex,
       currentWordIndex: 0,
     };
     startLearning(session);
@@ -187,14 +193,6 @@ export default function WordsPage() {
     if (!learningSession) return;
 
     const { unknownWords, currentExerciseType, currentWordIndex } = learningSession;
-    const currentWord = unknownWords[currentWordIndex];
-
-    // If this is a review session, update learningStep after each word
-    const cardState = cards.find(c => c.word.id === currentWord.id);
-    if (cardState?.progress) {
-      // Advance learningStep
-      await rateCard(currentWord.id, 3, cardState.progress);
-    }
 
     // Move to next word in current exercise
     if (currentWordIndex < unknownWords.length - 1) {
@@ -224,29 +222,26 @@ export default function WordsPage() {
   const finishLearningSession = async () => {
     if (!learningSession) return;
 
-    // Mark all words as learned at step 1 (will return in 10 minutes)
-    for (const word of learningSession.unknownWords) {
-      const progress: UserProgress = {
-        id: 0,
-        wordId: word.id,
-        state: 'learning',
-        learningStep: 1,
-        easeFactor: 2.5,
-        interval: 10 * 60 * 1000, // 10 minutes
-        repetitions: 0,
-        nextReview: Date.now() + 10 * 60 * 1000,
-        lastReview: Date.now(),
-        totalReviews: 1,
-        correctReviews: 1,
-        lapses: 0,
-      };
-      await rateCard(word.id, 3, null); // This will set it to learning step 1
+    // Check if this is a review session (word has progress)
+    const firstWord = learningSession.unknownWords[0];
+    const cardState = cards.find(c => c.word.id === firstWord.id);
+
+    if (cardState?.progress) {
+      // Review session - advance learningStep for this one word
+      await rateCard(firstWord.id, 3, cardState.progress);
+      Alert.alert('Отлично!', 'Слово повторено. Оно вернется позже.');
+    } else {
+      // New words session - set all to learning step 1
+      for (const word of learningSession.unknownWords) {
+        await rateCard(word.id, 3, null); // Sets to learning step 1
+      }
+      Alert.alert('Отлично!', `Вы изучили ${learningSession.unknownWords.length} слов. Они вернутся через 10 минут для повторения.`);
     }
 
     setLearningSession(null);
     setPhase('menu');
     loadCards();
-    Alert.alert('Отлично!', `Вы изучили ${learningSession.unknownWords.length} слов. Они вернутся через 10 минут для повторения.`);
+  };
   };
 
   const handleChoice = (choice: string) => {

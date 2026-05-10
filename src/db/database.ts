@@ -182,8 +182,9 @@ export async function rateCard(
       newProgress.learningStep = 1;
       newProgress.nextReview = now + settings.learningIntervals[0];
     } else if (newProgress.learningStep < 4) {
+      const currentStep = newProgress.learningStep;
       newProgress.learningStep += 1;
-      newProgress.nextReview = now + settings.learningIntervals[newProgress.learningStep - 1];
+      newProgress.nextReview = now + settings.learningIntervals[currentStep];
     } else {
       // Graduate to review
       newProgress.state = 'review';
