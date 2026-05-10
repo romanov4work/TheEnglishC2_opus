@@ -99,9 +99,29 @@ export default function WordsPage() {
       Alert.alert('Нет карточек', 'Все слова изучены на сегодня!');
       return;
     }
-    setPhase('sorting');
-    setCurrentIndex(0);
-    setShowAnswer(false);
+
+    // Check if we have review cards (words that need repetition)
+    const reviewCards = cards.filter(c => c.progress && c.progress.state !== 'new');
+
+    if (reviewCards.length > 0) {
+      // Start review session instead of sorting
+      startReviewSession(reviewCards);
+    } else {
+      // Start sorting for new words
+      setPhase('sorting');
+      setCurrentIndex(0);
+      setShowAnswer(false);
+    }
+  };
+
+  const startReviewSession = (reviewCards: CardState[]) => {
+    // Create learning session from review cards
+    const session: LearningSession = {
+      unknownWords: reviewCards.map(c => c.word),
+      currentExerciseType: (reviewCards[0].progress?.learningStep || 1) as 0 | 1 | 2 | 3,
+      currentWordIndex: 0,
+    };
+    startLearning(session);
   };
 
   const handleKnow = async (know: boolean) => {
@@ -163,10 +183,18 @@ export default function WordsPage() {
     }
   };
 
-  const moveToNextExercise = () => {
+  const moveToNextExercise = async () => {
     if (!learningSession) return;
 
     const { unknownWords, currentExerciseType, currentWordIndex } = learningSession;
+    const currentWord = unknownWords[currentWordIndex];
+
+    // If this is a review session, update learningStep after each word
+    const cardState = cards.find(c => c.word.id === currentWord.id);
+    if (cardState?.progress) {
+      // Advance learningStep
+      await rateCard(currentWord.id, 3, cardState.progress);
+    }
 
     // Move to next word in current exercise
     if (currentWordIndex < unknownWords.length - 1) {
@@ -188,7 +216,7 @@ export default function WordsPage() {
       setExerciseType(newType);
       setupExercise(unknownWords[0], newType);
     } else {
-      // Finished all exercises, mark words as learned
+      // Finished all exercises
       finishLearningSession();
     }
   };
@@ -196,14 +224,29 @@ export default function WordsPage() {
   const finishLearningSession = async () => {
     if (!learningSession) return;
 
-    // Mark all words as learned (step 1)
+    // Mark all words as learned at step 1 (will return in 10 minutes)
     for (const word of learningSession.unknownWords) {
-      await rateCard(word.id, 3, null); // Good rating, start learning
+      const progress: UserProgress = {
+        id: 0,
+        wordId: word.id,
+        state: 'learning',
+        learningStep: 1,
+        easeFactor: 2.5,
+        interval: 10 * 60 * 1000, // 10 minutes
+        repetitions: 0,
+        nextReview: Date.now() + 10 * 60 * 1000,
+        lastReview: Date.now(),
+        totalReviews: 1,
+        correctReviews: 1,
+        lapses: 0,
+      };
+      await rateCard(word.id, 3, null); // This will set it to learning step 1
     }
 
     setLearningSession(null);
     setPhase('menu');
     loadCards();
+    Alert.alert('Отлично!', `Вы изучили ${learningSession.unknownWords.length} слов. Они вернутся через 10 минут для повторения.`);
   };
 
   const handleChoice = (choice: string) => {
