@@ -116,14 +116,6 @@ export default function WordsPage() {
       setLetters(getLetters(current.word.word));
     }
   };
-    if (type === 'choices' && current) {
-      setChoices(getChoices(current.word, SEED_WORDS as Word[]));
-    }
-    if (type === 'assembly' && current) {
-      setLetters(getLetters(current.word.word));
-      setAssembled('');
-    }
-  };
 
   const handleRate = async (rating: 1 | 2 | 3 | 4) => {
     const current = cards[currentIndex];
