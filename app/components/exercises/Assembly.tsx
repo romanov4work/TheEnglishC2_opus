@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Word } from '../../../src/db/database';
 import { ChoiceResult } from '../../../src/types/words';
+import { hapticSuccess, hapticError, hapticLight } from '../../../src/utils/feedback';
 
 interface AssemblyProps {
   word: Word;
@@ -12,6 +13,23 @@ interface AssemblyProps {
 }
 
 export default function Assembly({ word, letters, assembled, result, onLetterPress, onBackspace }: AssemblyProps) {
+  const handleLetterPress = (letter: string, idx: number) => {
+    hapticLight();
+    onLetterPress(letter, idx);
+  };
+
+  const handleBackspace = () => {
+    hapticLight();
+    onBackspace();
+  };
+
+  // Trigger haptic feedback when result changes
+  if (result === 'correct') {
+    hapticSuccess();
+  } else if (result === 'wrong') {
+    hapticError();
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.translation}>{word.translation}</Text>
@@ -22,13 +40,13 @@ export default function Assembly({ word, letters, assembled, result, onLetterPre
 
       <View style={styles.lettersGrid}>
         {letters.map((letter, idx) => (
-          <Pressable key={idx} style={styles.letterBtn} onPress={() => onLetterPress(letter, idx)}>
+          <Pressable key={idx} style={styles.letterBtn} onPress={() => handleLetterPress(letter, idx)}>
             <Text style={styles.letterText}>{letter}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Pressable style={styles.backspaceBtn} onPress={onBackspace}>
+      <Pressable style={styles.backspaceBtn} onPress={handleBackspace}>
         <Text style={styles.backspaceText}>⌫ Стереть</Text>
       </Pressable>
 

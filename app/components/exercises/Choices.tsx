@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Word } from '../../../src/db/database';
 import { ChoiceResult } from '../../../src/types/words';
+import { hapticSuccess, hapticError, hapticLight } from '../../../src/utils/feedback';
 
 interface ChoicesProps {
   word: Word;
@@ -11,6 +12,19 @@ interface ChoicesProps {
 }
 
 export default function Choices({ word, choices, selectedChoice, result, onChoice }: ChoicesProps) {
+  const handleChoice = (choice: string) => {
+    if (result) return;
+    hapticLight();
+    onChoice(choice);
+  };
+
+  // Trigger haptic feedback when result changes
+  if (result === 'correct') {
+    hapticSuccess();
+  } else if (result === 'wrong') {
+    hapticError();
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.word}>{word.word}</Text>
@@ -30,7 +44,7 @@ export default function Choices({ word, choices, selectedChoice, result, onChoic
                 isCorrect && styles.choiceCorrect,
                 isWrong && styles.choiceWrong,
               ]}
-              onPress={() => !result && onChoice(choice)}
+              onPress={() => handleChoice(choice)}
               disabled={!!result}
             >
               <Text style={styles.choiceText}>{choice}</Text>

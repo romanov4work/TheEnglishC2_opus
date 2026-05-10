@@ -1,6 +1,7 @@
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Word } from '../../../src/db/database';
 import { ChoiceResult } from '../../../src/types/words';
+import { hapticSuccess, hapticError, hapticMedium } from '../../../src/utils/feedback';
 
 interface InputProps {
   word: Word;
@@ -11,6 +12,18 @@ interface InputProps {
 }
 
 export default function Input({ word, userInput, result, onInputChange, onSubmit }: InputProps) {
+  const handleSubmit = () => {
+    hapticMedium();
+    onSubmit();
+  };
+
+  // Trigger haptic feedback when result changes
+  if (result === 'correct') {
+    hapticSuccess();
+  } else if (result === 'wrong') {
+    hapticError();
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.word}>{word.word}</Text>
@@ -27,7 +40,7 @@ export default function Input({ word, userInput, result, onInputChange, onSubmit
       />
 
       {!result && (
-        <Pressable style={styles.submitBtn} onPress={onSubmit}>
+        <Pressable style={styles.submitBtn} onPress={handleSubmit}>
           <Text style={styles.submitText}>Проверить</Text>
         </Pressable>
       )}
