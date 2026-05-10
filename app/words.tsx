@@ -339,6 +339,12 @@ export default function WordsPage() {
                 <Text style={styles.infoText}>Точность: {stats.retentionRate}%</Text>
                 <Text style={styles.infoText}>Всего: {SEED_WORDS.length}</Text>
               </View>
+
+              <Link href="/settings" asChild>
+                <Pressable style={styles.settingsLink}>
+                  <Text style={styles.settingsLinkText}>⚙ Настройки</Text>
+                </Pressable>
+              </Link>
             </>
           )}
         </View>
@@ -607,6 +613,17 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   infoText: { fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: '300' },
+
+  settingsLink: {
+    marginTop: 20,
+    padding: 12,
+    alignItems: 'center',
+  },
+  settingsLinkText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '300',
+  },
 
   // Sorting buttons
   sortingButtons: {
