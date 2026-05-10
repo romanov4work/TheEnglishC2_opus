@@ -121,8 +121,8 @@ export default function WordsPage() {
   };
 
   const startReviewSession = (reviewCards: CardState[]) => {
-    // Take up to 10 words for review session
-    const wordsToReview = reviewCards.slice(0, 10).map(c => c.word);
+    // Take up to 3 words for review session
+    const wordsToReview = reviewCards.slice(0, 3).map(c => c.word);
 
     // Start with first word's exercise type based on its learningStep
     const firstStep = reviewCards[0].progress?.learningStep || 1;
@@ -146,8 +146,8 @@ export default function WordsPage() {
       session.unknownWords.push(current.word);
       setLearningSession(session);
 
-      // If we have 10 unknown words, start learning
-      if (session.unknownWords.length >= 10) {
+      // If we have 3 unknown words, start learning
+      if (session.unknownWords.length >= 3) {
         startLearning(session);
         return;
       }
@@ -427,7 +427,7 @@ export default function WordsPage() {
         <StatusBar style="light" />
         <View style={styles.cardHeader}>
           <Pressable onPress={() => setPhase('menu')}><Text style={styles.closeText}>✕</Text></Pressable>
-          <Text style={styles.progressText}>{currentIndex + 1} / {cards.length} • Незнакомых: {unknownCount}/10</Text>
+          <Text style={styles.progressText}>{currentIndex + 1} / {cards.length} • Незнакомых: {unknownCount}/3</Text>
         </View>
         <View style={styles.cardArea}>
           <View style={styles.flashcard}>
