@@ -5,15 +5,19 @@ import { StyleSheet, Text, View, Pressable, Alert, TextInput } from 'react-nativ
 import { getDueCards, seedWords, rateCard, getStats, getStreak, parseExamples, Word, UserProgress } from '../src/db/database';
 import { SEED_WORDS } from '../src/data/seedWords';
 
-type Phase = 'menu' | 'training';
+type Phase = 'menu' | 'sorting' | 'learning';
 type ExerciseType = 'flashcard' | 'choices' | 'assembly' | 'input';
 type ChoiceResult = 'correct' | 'wrong' | null;
 
-function getExerciseType(progress: UserProgress | null): ExerciseType {
-  if (!progress || progress.learningStep === 0 || progress.learningStep === 1) return 'flashcard';
-  if (progress.learningStep === 2) return 'choices';
-  if (progress.learningStep === 3) return 'assembly';
-  return 'input';
+interface LearningSession {
+  unknownWords: Word[];
+  currentExerciseType: 0 | 1 | 2 | 3; // 0=flashcard, 1=choices, 2=assembly, 3=input
+  currentWordIndex: number;
+}
+
+function getExerciseTypeByIndex(index: 0 | 1 | 2 | 3): ExerciseType {
+  const types: ExerciseType[] = ['flashcard', 'choices', 'assembly', 'input'];
+  return types[index];
 }
 
 function speak(word: string) {
@@ -48,23 +52,22 @@ export default function WordsPage() {
   const [phase, setPhase] = useState<Phase>('menu');
   const [cards, setCards] = useState<CardState[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ new: 0, learning: 0, review: 0, dueToday: 0, retentionRate: 0 });
   const [streak, setStreak] = useState(0);
+
+  // Learning session
+  const [learningSession, setLearningSession] = useState<LearningSession | null>(null);
   const [exerciseType, setExerciseType] = useState<ExerciseType>('flashcard');
 
-  // choices
+  // Exercise state
+  const [showAnswer, setShowAnswer] = useState(false);
   const [choices, setChoices] = useState<string[]>([]);
   const [choiceResult, setChoiceResult] = useState<ChoiceResult>(null);
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
-
-  // assembly
   const [letters, setLetters] = useState<string[]>([]);
   const [assembled, setAssembled] = useState<string>('');
   const [assemblyResult, setAssemblyResult] = useState<ChoiceResult>(null);
-
-  // input
   const [userInput, setUserInput] = useState('');
   const [inputResult, setInputResult] = useState<ChoiceResult>(null);
 
@@ -91,96 +94,149 @@ export default function WordsPage() {
 
   useEffect(() => { loadCards(); }, [loadCards]);
 
-  const startTraining = () => {
+  const startSorting = () => {
     if (cards.length === 0) {
       Alert.alert('Нет карточек', 'Все слова изучены на сегодня!');
       return;
     }
-    setPhase('training');
+    setPhase('sorting');
     setCurrentIndex(0);
+    setShowAnswer(false);
+  };
+
+  const handleKnow = async (know: boolean) => {
+    const current = cards[currentIndex];
+    if (!current) return;
+
+    if (!know) {
+      // Add to unknown words for learning session
+      const session = learningSession || { unknownWords: [], currentExerciseType: 0 as 0, currentWordIndex: 0 };
+      session.unknownWords.push(current.word);
+      setLearningSession(session);
+
+      // If we have 10 unknown words, start learning
+      if (session.unknownWords.length >= 10) {
+        startLearning(session);
+        return;
+      }
+    } else {
+      // Mark as known (skip learning)
+      await rateCard(current.word.id, 4, current.progress); // Easy = skip to review
+    }
+
+    // Move to next card
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      // No more cards, start learning with what we have
+      if (learningSession && learningSession.unknownWords.length > 0) {
+        startLearning(learningSession);
+      } else {
+        setPhase('menu');
+        loadCards();
+      }
+    }
+  };
+
+  const startLearning = (session: LearningSession) => {
+    setPhase('learning');
+    setLearningSession(session);
+    const type = getExerciseTypeByIndex(session.currentExerciseType);
+    setExerciseType(type);
+    setupExercise(session.unknownWords[session.currentWordIndex], type);
+  };
+
+  const setupExercise = (word: Word, type: ExerciseType) => {
     setShowAnswer(false);
     setChoiceResult(null);
     setSelectedChoice(null);
     setAssembled('');
+    setAssemblyResult(null);
     setUserInput('');
     setInputResult(null);
 
-    const current = cards[0];
-    const type = getExerciseType(current.progress);
-    setExerciseType(type);
-
     if (type === 'choices') {
-      setChoices(getChoices(current.word, SEED_WORDS as Word[]));
+      setChoices(getChoices(word, SEED_WORDS as Word[]));
     }
     if (type === 'assembly') {
-      setLetters(getLetters(current.word.word));
+      setLetters(getLetters(word.word));
     }
   };
 
-  const handleRate = async (rating: 1 | 2 | 3 | 4) => {
-    const current = cards[currentIndex];
-    if (!current) return;
+  const moveToNextExercise = () => {
+    if (!learningSession) return;
 
-    try {
-      await rateCard(current.word.id, rating, current.progress);
-      setShowAnswer(false);
-      moveNext();
-    } catch (e) {
-      Alert.alert('Error', String(e));
-    }
-  };
+    const { unknownWords, currentExerciseType, currentWordIndex } = learningSession;
 
-  const moveNext = () => {
-    if (currentIndex < cards.length - 1) {
-      const nextIdx = currentIndex + 1;
-      setCurrentIndex(nextIdx);
-      const next = cards[nextIdx];
-      const type = getExerciseType(next.progress);
-      setExerciseType(type);
-
-      if (type === 'choices') {
-        setChoices(getChoices(next.word, SEED_WORDS as Word[]));
-        setChoiceResult(null);
-        setSelectedChoice(null);
-      }
-      if (type === 'assembly') {
-        setLetters(getLetters(next.word.word));
-        setAssembled('');
-        setAssemblyResult(null);
-      }
-      if (type === 'input') {
-        setUserInput('');
-        setInputResult(null);
-      }
+    // Move to next word in current exercise
+    if (currentWordIndex < unknownWords.length - 1) {
+      const newSession = {
+        ...learningSession,
+        currentWordIndex: currentWordIndex + 1,
+      };
+      setLearningSession(newSession);
+      setupExercise(unknownWords[currentWordIndex + 1], getExerciseTypeByIndex(currentExerciseType));
+    } else if (currentExerciseType < 3) {
+      // Move to next exercise type, reset word index
+      const newSession = {
+        ...learningSession,
+        currentExerciseType: (currentExerciseType + 1) as 0 | 1 | 2 | 3,
+        currentWordIndex: 0,
+      };
+      setLearningSession(newSession);
+      const newType = getExerciseTypeByIndex(newSession.currentExerciseType);
+      setExerciseType(newType);
+      setupExercise(unknownWords[0], newType);
     } else {
-      setPhase('menu');
-      loadCards();
+      // Finished all exercises, mark words as learned
+      finishLearningSession();
     }
+  };
+
+  const finishLearningSession = async () => {
+    if (!learningSession) return;
+
+    // Mark all words as learned (step 1)
+    for (const word of learningSession.unknownWords) {
+      await rateCard(word.id, 3, null); // Good rating, start learning
+    }
+
+    setLearningSession(null);
+    setPhase('menu');
+    loadCards();
   };
 
   const handleChoice = (choice: string) => {
-    const current = cards[currentIndex];
-    if (!current) return;
+    if (!learningSession) return;
+    const current = learningSession.unknownWords[learningSession.currentWordIndex];
     setSelectedChoice(choice);
-    const correct = choice === current.word.translation;
+    const correct = choice === current.translation;
     setChoiceResult(correct ? 'correct' : 'wrong');
-    setShowAnswer(true); // Show rating buttons
+    setTimeout(() => moveToNextExercise(), 1000);
   };
 
   const handleLetterPress = (letter: string, idx: number) => {
-    const current = cards[currentIndex];
-    if (!current) return;
+    if (!learningSession) return;
+    const current = learningSession.unknownWords[learningSession.currentWordIndex];
     const newAssembled = assembled + letter;
     const newLetters = [...letters];
     newLetters.splice(idx, 1);
     setAssembled(newAssembled);
     setLetters(newLetters);
 
-    if (newAssembled.length === current.word.word.length) {
-      const correct = newAssembled === current.word.word;
+    if (newAssembled.length === current.word.length) {
+      const correct = newAssembled === current.word;
       setAssemblyResult(correct ? 'correct' : 'wrong');
-      setTimeout(() => setShowAnswer(true), 800); // Show rating buttons after delay
+      setTimeout(() => moveToNextExercise(), 1000);
     }
+  };
+
+  const handleInputSubmit = () => {
+    if (!learningSession) return;
+    const current = learningSession.unknownWords[learningSession.currentWordIndex];
+    const correct = userInput.toLowerCase().trim() === current.translation.toLowerCase().trim();
+    setInputResult(correct ? 'correct' : 'wrong');
+    setTimeout(() => moveToNextExercise(), 1000);
   };
 
   const handleBackspace = () => {
@@ -188,14 +244,6 @@ export default function WordsPage() {
     const lastLetter = assembled[assembled.length - 1];
     setAssembled(assembled.slice(0, -1));
     setLetters([...letters, lastLetter]);
-  };
-
-  const handleInputSubmit = () => {
-    const current = cards[currentIndex];
-    if (!current) return;
-    const correct = userInput.toLowerCase().trim() === current.word.translation.toLowerCase().trim();
-    setInputResult(correct ? 'correct' : 'wrong');
-    setTimeout(() => setShowAnswer(true), 800); // Show rating buttons after delay
   };
 
   // === MENU ===
@@ -240,7 +288,7 @@ export default function WordsPage() {
                 </View>
               )}
 
-              <Pressable style={styles.startBtn} onPress={startTraining}>
+              <Pressable style={styles.startBtn} onPress={startSorting}>
                 <Text style={styles.startBtnText}>Начать тренировку</Text>
               </Pressable>
 
@@ -255,43 +303,86 @@ export default function WordsPage() {
     );
   }
 
-  const current = cards[currentIndex];
-  if (!current) return null;
+  // === SORTING (Know/Don't Know) ===
+  if (phase === 'sorting') {
+    const current = cards[currentIndex];
+    if (!current) return null;
 
-  // === TRAINING (automatic exercise type) ===
-  if (phase === 'training') {
+    const unknownCount = learningSession?.unknownWords.length || 0;
+
     return (
       <View style={styles.root}>
         <StatusBar style="light" />
         <View style={styles.cardHeader}>
           <Pressable onPress={() => setPhase('menu')}><Text style={styles.closeText}>✕</Text></Pressable>
-          <Text style={styles.progressText}>{currentIndex + 1} / {cards.length}</Text>
+          <Text style={styles.progressText}>{currentIndex + 1} / {cards.length} • Незнакомых: {unknownCount}/10</Text>
+        </View>
+        <View style={styles.cardArea}>
+          <View style={styles.flashcard}>
+            <Pressable style={styles.speakBtn} onPress={() => speak(current.word.word)}>
+              <Text style={styles.speakBtnText}>🔊</Text>
+            </Pressable>
+            <Text style={styles.wordText}>{current.word.word}</Text>
+            {current.word.phonetic && <Text style={styles.phoneticText}>{current.word.phonetic}</Text>}
+            <Text style={styles.divider}>—</Text>
+            <Text style={styles.translationText}>{current.word.translation}</Text>
+            {current.word.partOfSpeech && <Text style={styles.posText}>{current.word.partOfSpeech}</Text>}
+          </View>
+        </View>
+        <View style={styles.sortingButtons}>
+          <Pressable style={[styles.sortBtn, styles.sortBtnKnow]} onPress={() => handleKnow(true)}>
+            <Text style={styles.sortBtnText}>Знаю</Text>
+          </Pressable>
+          <Pressable style={[styles.sortBtn, styles.sortBtnDontKnow]} onPress={() => handleKnow(false)}>
+            <Text style={styles.sortBtnText}>Не знаю</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  // === LEARNING (4 exercises) ===
+  if (phase === 'learning') {
+    if (!learningSession) return null;
+    const current = learningSession.unknownWords[learningSession.currentWordIndex];
+    const exerciseNames = ['Карточка', '4 варианта', 'Сборка', 'Ввод'];
+    const progress = `${learningSession.currentWordIndex + 1}/${learningSession.unknownWords.length} • ${exerciseNames[learningSession.currentExerciseType]}`;
+
+    return (
+      <View style={styles.root}>
+        <StatusBar style="light" />
+        <View style={styles.cardHeader}>
+          <Pressable onPress={() => setPhase('menu')}><Text style={styles.closeText}>✕</Text></Pressable>
+          <Text style={styles.progressText}>{progress}</Text>
         </View>
 
         {exerciseType === 'flashcard' && (
           <View style={styles.cardArea}>
             {!showAnswer ? (
               <Pressable style={styles.flashcard} onPress={() => setShowAnswer(true)}>
-                <Pressable style={styles.speakBtn} onPress={() => speak(current.word.word)}>
+                <Pressable style={styles.speakBtn} onPress={() => speak(current.word)}>
                   <Text style={styles.speakBtnText}>🔊</Text>
                 </Pressable>
-                <Text style={styles.wordText}>{current.word.word}</Text>
-                {current.word.phonetic && <Text style={styles.phoneticText}>{current.word.phonetic}</Text>}
+                <Text style={styles.wordText}>{current.word}</Text>
+                {current.phonetic && <Text style={styles.phoneticText}>{current.phonetic}</Text>}
                 <Text style={styles.tapHint}>нажмите, чтобы увидеть перевод</Text>
               </Pressable>
             ) : (
               <View style={styles.flashcard}>
-                <Pressable style={styles.speakBtn} onPress={() => speak(current.word.word)}>
+                <Pressable style={styles.speakBtn} onPress={() => speak(current.word)}>
                   <Text style={styles.speakBtnText}>🔊</Text>
                 </Pressable>
-                <Text style={styles.wordText}>{current.word.word}</Text>
-                {current.word.phonetic && <Text style={styles.phoneticText}>{current.word.phonetic}</Text>}
+                <Text style={styles.wordText}>{current.word}</Text>
+                {current.phonetic && <Text style={styles.phoneticText}>{current.phonetic}</Text>}
                 <Text style={styles.divider}>—</Text>
-                <Text style={styles.translationText}>{current.word.translation}</Text>
-                {current.word.partOfSpeech && <Text style={styles.posText}>{current.word.partOfSpeech}</Text>}
-                {current.word.examples && parseExamples(current.word.examples).length > 0 && (
-                  <Text style={styles.exampleText}>"{parseExamples(current.word.examples)[0]}"</Text>
+                <Text style={styles.translationText}>{current.translation}</Text>
+                {current.partOfSpeech && <Text style={styles.posText}>{current.partOfSpeech}</Text>}
+                {current.examples && parseExamples(current.examples).length > 0 && (
+                  <Text style={styles.exampleText}>"{parseExamples(current.examples)[0]}"</Text>
                 )}
+                <Pressable style={styles.continueBtn} onPress={moveToNextExercise}>
+                  <Text style={styles.continueBtnText}>Продолжить</Text>
+                </Pressable>
               </View>
             )}
           </View>
@@ -300,8 +391,8 @@ export default function WordsPage() {
         {exerciseType === 'choices' && (
           <View style={styles.choicesArea}>
             <View style={styles.choicesTop}>
-              <Text style={styles.choicesWord}>{current.word.word}</Text>
-              <Pressable style={styles.speakBtn} onPress={() => speak(current.word.word)}>
+              <Text style={styles.choicesWord}>{current.word}</Text>
+              <Pressable style={styles.speakBtn} onPress={() => speak(current.word)}>
                 <Text style={styles.speakBtnText}>🔊</Text>
               </Pressable>
             </View>
@@ -309,14 +400,14 @@ export default function WordsPage() {
             <View style={styles.choicesGrid}>
               {choices.map((choice, i) => {
                 let bg = 'rgba(255,255,255,0.05)';
-                if (choiceResult === 'correct' && choice === current.word.translation) bg = 'rgba(16,185,129,0.2)';
+                if (choiceResult === 'correct' && choice === current.translation) bg = 'rgba(16,185,129,0.2)';
                 if (choiceResult === 'wrong' && choice === selectedChoice) bg = 'rgba(239,68,68,0.2)';
                 return (
                   <Pressable
                     key={i}
                     style={[styles.choiceBtn, { backgroundColor: bg }]}
                     onPress={() => !choiceResult && handleChoice(choice)}
-                    disabled={!!choiceResult || showAnswer}
+                    disabled={!!choiceResult}
                   >
                     <Text style={styles.choiceText}>{choice}</Text>
                   </Pressable>
@@ -325,7 +416,7 @@ export default function WordsPage() {
             </View>
             {choiceResult && (
               <Text style={[styles.resultText, choiceResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
-                {choiceResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word.translation}`}
+                {choiceResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.translation}`}
               </Text>
             )}
           </View>
@@ -335,8 +426,8 @@ export default function WordsPage() {
           <View style={styles.assemblyArea}>
             <Text style={styles.assemblyHint}>Соберите слово:</Text>
             <View style={styles.assemblyTranslation}>
-              <Text style={styles.assemblyTransText}>{current.word.translation}</Text>
-              <Pressable style={styles.speakBtn} onPress={() => speak(current.word.word)}>
+              <Text style={styles.assemblyTransText}>{current.translation}</Text>
+              <Pressable style={styles.speakBtn} onPress={() => speak(current.word)}>
                 <Text style={styles.speakBtnText}>🔊</Text>
               </Pressable>
             </View>
@@ -345,7 +436,7 @@ export default function WordsPage() {
                 {assembled || ' '}
               </Text>
             </View>
-            {!showAnswer && (
+            {!assemblyResult && (
               <>
                 <View style={styles.lettersBox}>
                   {letters.map((letter, i) => (
@@ -361,7 +452,7 @@ export default function WordsPage() {
             )}
             {assemblyResult && (
               <Text style={[styles.resultText, assemblyResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
-                {assemblyResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word.word}`}
+                {assemblyResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word}`}
               </Text>
             )}
           </View>
@@ -369,8 +460,8 @@ export default function WordsPage() {
 
         {exerciseType === 'input' && (
           <View style={styles.inputArea}>
-            <Text style={styles.inputWord}>{current.word.word}</Text>
-            <Pressable style={styles.speakBtn} onPress={() => speak(current.word.word)}>
+            <Text style={styles.inputWord}>{current.word}</Text>
+            <Pressable style={styles.speakBtn} onPress={() => speak(current.word)}>
               <Text style={styles.speakBtnText}>🔊</Text>
             </Pressable>
             <Text style={styles.inputHint}>Введите перевод:</Text>
@@ -383,9 +474,9 @@ export default function WordsPage() {
               placeholderTextColor="rgba(255,255,255,0.2)"
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!showAnswer}
+              editable={!inputResult}
             />
-            {!showAnswer && (
+            {!inputResult && (
               <View style={styles.inputBtns}>
                 <Pressable
                   style={styles.inputSubmitBtn}
@@ -398,33 +489,9 @@ export default function WordsPage() {
             )}
             {inputResult && (
               <Text style={[styles.resultText, inputResult === 'correct' ? styles.resultCorrect : styles.resultWrong]}>
-                {inputResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.word.translation}`}
+                {inputResult === 'correct' ? '✓ Правильно!' : `✗ Правильный ответ: ${current.translation}`}
               </Text>
             )}
-          </View>
-        )}
-
-        {showAnswer && (
-          <View style={styles.rateArea}>
-            <Text style={styles.rateTitle}>Как вспомнили?</Text>
-            <View style={styles.rateButtons}>
-              <Pressable style={styles.rateBtn} onPress={() => handleRate(1)}>
-                <Text style={styles.rateBtnText}>Снова</Text>
-                <Text style={styles.rateBtnSub}>10 мин</Text>
-              </Pressable>
-              <Pressable style={styles.rateBtn} onPress={() => handleRate(2)}>
-                <Text style={styles.rateBtnText}>Трудно</Text>
-                <Text style={styles.rateBtnSub}>~1 дн</Text>
-              </Pressable>
-              <Pressable style={styles.rateBtn} onPress={() => handleRate(3)}>
-                <Text style={styles.rateBtnText}>Хорошо</Text>
-                <Text style={styles.rateBtnSub}>~4 дн</Text>
-              </Pressable>
-              <Pressable style={styles.rateBtn} onPress={() => handleRate(4)}>
-                <Text style={styles.rateBtnText}>Легко</Text>
-                <Text style={styles.rateBtnSub}>10 дн</Text>
-              </Pressable>
-            </View>
           </View>
         )}
       </View>
@@ -497,6 +564,48 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   infoText: { fontSize: 12, color: 'rgba(255,255,255,0.25)', fontWeight: '300' },
+
+  // Sorting buttons
+  sortingButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  sortBtn: {
+    flex: 1,
+    paddingVertical: 20,
+    borderRadius: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  sortBtnKnow: {
+    backgroundColor: 'rgba(16,185,129,0.1)',
+    borderColor: 'rgba(16,185,129,0.3)',
+  },
+  sortBtnDontKnow: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderColor: 'rgba(239,68,68,0.3)',
+  },
+  sortBtnText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#fff',
+  },
+
+  // Continue button
+  continueBtn: {
+    marginTop: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 4,
+  },
+  continueBtnText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#fff',
+  },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 60, paddingHorizontal: 20, paddingBottom: 10 },
   closeText: { fontSize: 20, color: 'rgba(255,255,255,0.3)', fontWeight: '300' },
   progressText: { fontSize: 13, color: 'rgba(255,255,255,0.3)', fontWeight: '300' },
